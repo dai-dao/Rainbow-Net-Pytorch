@@ -28,3 +28,6 @@ params.py
 
 ## Disclaimer
 Needs more benchmarking against several different environments, the current implementation works within the CartPole environment.
+
+## Common mistakes
+1. Flip the dones variable before multiplying with state value
