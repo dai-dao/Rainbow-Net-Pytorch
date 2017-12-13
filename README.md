@@ -21,8 +21,9 @@ params.py
 - [x] Dueling Architecture
 - [x] n-step Double Q-learning   
 - [x] Prioritized replay
-- [ ] Parameter space noise
-- [ ] Distributional policy
+- [x] Noisy Linear Layer -> Greatly improves learning
+- [x] Distributional policy
+- [ ] Scale training to train and benchmark in Atari environments
 - [ ] Continuous counterpart
 - [ ] TreeQN / ATreeC
 
@@ -30,4 +31,8 @@ params.py
 Needs more benchmarking against several different environments, the current implementation works within the CartPole environment.
 
 ## Common mistakes
-1. Flip the dones variable before multiplying with state value
+1. Flip 'dones' variable before multiplying with state value
+2. Use 'Tensor.index_add_', instead of 'Tensor[i].add_'
+3. For n-step learning, do optimizer update at every step, avoid aggregating losses from each step. Still not sure why that doesn't work.
+
+
