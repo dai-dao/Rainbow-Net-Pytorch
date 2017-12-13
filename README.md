@@ -3,6 +3,7 @@
 ## This implementation is inspired by:
 1. OpenAI Tensorflow code: https://github.com/openai/baselines/tree/master/baselines/deepq
 2. https://github.com/ShangtongZhang/DeepRL
+3. https://github.com/floringogianu/categorical-dqn
 
 
 To run training:
