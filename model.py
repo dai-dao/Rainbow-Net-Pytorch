@@ -109,7 +109,7 @@ class NoisyDistDuelingMLP(nn.Module):
 
 
 class NoisyDistDuelingConv(nn.Module):
-    def __init__(self, nb_atoms, ob_channels, num_action, sigma_init):
+    def __init__(self, nb_atoms, ob_channels, num_action, dtype, sigma_init):
         super(NoisyDistDuelingConv, self).__init__()
         self.nb_atoms = nb_atoms
         self.num_action = num_action
