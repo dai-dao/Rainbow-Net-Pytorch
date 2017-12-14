@@ -22,8 +22,6 @@ class RainbowAgent(object):
         if self.args.cuda:
             self.dtype = torch.cuda.FloatTensor
             self.atype = torch.cuda.LongTensor
-            self.model.cuda()
-            self.target_model.cuda()
 
         self.v_min = args.dist_params['Vmin']
         self.v_max = args.dist_params['Vmax']
