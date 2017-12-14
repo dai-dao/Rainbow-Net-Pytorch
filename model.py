@@ -119,8 +119,8 @@ class NoisyDistDuelingConv(nn.Module):
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1)
         self.l1 = nn.Linear(in_features=64*7*7, out_features=512)
 
-        self.value = NoisyLinear(512, nb_atoms, sigma_init=sigma_init)
-        self.advantage = NoisyLinear(512, num_action * nb_atoms, sigma_init=sigma_init)
+        self.value = NoisyLinear(512, nb_atoms, dtype, sigma_init=sigma_init)
+        self.advantage = NoisyLinear(512, num_action * nb_atoms, dtype, sigma_init=sigma_init)
 
     
     def forward(self, x):
