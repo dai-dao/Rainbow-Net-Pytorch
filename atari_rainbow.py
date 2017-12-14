@@ -30,8 +30,8 @@ class RainbowAgent(object):
         self.z = torch.linspace(self.v_min, self.v_max, self.nb_atoms).type(self.dtype)
         self.m = torch.zeros(args.batch_size, self.nb_atoms).type(self.dtype)
         
-        self.model = NoisyDistDuelingConv(self.nb_atoms, ob_shape[0], num_action, args.sigma_init)
-        self.target_model = NoisyDistDuelingConv(self.nb_atoms, ob_shape[0], num_action, args.sigma_init)
+        self.model = NoisyDistDuelingConv(self.nb_atoms, ob_shape[0], num_action, self.dtype, args.sigma_init)
+        self.target_model = NoisyDistDuelingConv(self.nb_atoms, ob_shape[0], num_action, self.dtype, args.sigma_init)
         if self.args.cuda:
             self.model.cuda()
             self.target_model.cuda()

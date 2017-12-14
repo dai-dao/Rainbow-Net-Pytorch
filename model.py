@@ -42,10 +42,11 @@ class DistDuelingMLP(nn.Module):
 
 
 class NoisyLinear(nn.Linear):
-    def __init__(self, in_features, out_features, sigma_init=0.017, bias=True):
+    def __init__(self, in_features, out_features, dtype, sigma_init=0.017, bias=True):
         super(NoisyLinear, self).__init__(in_features, out_features, bias=True)
 
         self.sigma_init = sigma_init
+        self.dtype = dtype
         self.sigma_weight = Parameter(torch.Tensor(out_features, in_features))  # σ^w
         self.sigma_bias = Parameter(torch.Tensor(out_features))
 
@@ -68,24 +69,24 @@ class NoisyLinear(nn.Linear):
 
     
     def sample_noise(self):
-        self.epsilon_weight = torch.randn(self.out_features, self.in_features)
-        self.epsilon_bias = torch.randn(self.out_features)
+        self.epsilon_weight = torch.randn(self.out_features, self.in_features).type(self.dtype)
+        self.epsilon_bias = torch.randn(self.out_features).type(self.dtype)
 
     
     def reset_noise(self):
-        self.epsilon_weight = torch.zeros(self.out_features, self.in_features)
-        self.epsilon_bias = torch.zeros(self.out_features)
+        self.epsilon_weight = torch.zeros(self.out_features, self.in_features).type(self.dtype)
+        self.epsilon_bias = torch.zeros(self.out_features).type(self.dtype)
 
 
     
 class NoisyDistDuelingMLP(nn.Module):
-    def __init__(self, hidden, nb_atoms, ob_shape, num_action, sigma_init):
+    def __init__(self, hidden, nb_atoms, ob_shape, num_action, dtype, sigma_init):
         super(NoisyDistDuelingMLP, self).__init__()
         self.nb_atoms = nb_atoms
         self.num_action = num_action
         self.l1 = nn.Linear(ob_shape, hidden)
-        self.value = NoisyLinear(hidden, nb_atoms, sigma_init=sigma_init)
-        self.advantage = NoisyLinear(hidden, num_action * nb_atoms, sigma_init=sigma_init)
+        self.value = NoisyLinear(hidden, nb_atoms, dtype, sigma_init=sigma_init)
+        self.advantage = NoisyLinear(hidden, num_action * nb_atoms, dtype, sigma_init=sigma_init)
 
 
     def forward(self, x):
