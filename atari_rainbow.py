@@ -95,7 +95,7 @@ class RainbowAgent(object):
 
         # Compute n-step q loss
         kl_losses = torch.zeros(batch_size).type(self.dtype)
-        Tzj = torch.zeros(batch_size, nb_atoms)
+        Tzj = torch.zeros(batch_size, nb_atoms).type(self.dtype)
         big_z = self.z.expand(batch_size, -1)
 
         for i in reversed(range(nstep)):
