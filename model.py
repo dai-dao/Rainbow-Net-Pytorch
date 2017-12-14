@@ -79,19 +79,59 @@ class NoisyLinear(nn.Linear):
 
     
 class NoisyDistDuelingMLP(nn.Module):
-    def __init__(self, hidden, nb_atoms, ob_shape, num_action):
+    def __init__(self, hidden, nb_atoms, ob_shape, num_action, sigma_init):
         super(NoisyDistDuelingMLP, self).__init__()
         self.nb_atoms = nb_atoms
         self.num_action = num_action
         self.l1 = nn.Linear(ob_shape, hidden)
-        self.value = NoisyLinear(hidden, nb_atoms)
-        self.advantage = NoisyLinear(hidden, num_action * nb_atoms)
+        self.value = NoisyLinear(hidden, nb_atoms, sigma_init=sigma_init)
+        self.advantage = NoisyLinear(hidden, num_action * nb_atoms, sigma_init=sigma_init)
 
 
     def forward(self, x):
         x = F.relu(self.l1(x))
         value = self.value(x).view(-1, self.nb_atoms).unsqueeze(1).expand(-1, self.num_action, self.nb_atoms)
         advantage = self.advantage(x).view(-1, self.num_action, self.nb_atoms)
+        phi = value + (advantage - advantage.mean(1, keepdim=True))
+        out = F.softmax(phi, dim=-1)
+        return out
+
+
+    def sample_noise(self):
+        self.value.sample_noise()
+        self.advantage.sample_noise()
+
+    
+    def reset_noise(self):
+        self.value.reset_noise()
+        self.advantage.reset_noise()
+
+
+class NoisyDistDuelingConv(nn.Module):
+    def __init__(self, nb_atoms, ob_channels, num_action, sigma_init):
+        super(NoisyDistDuelingConv, self).__init__()
+        self.nb_atoms = nb_atoms
+        self.num_action = num_action
+
+        self.conv1 = nn.Conv2d(in_channels=ob_channels, out_channels=32, kernel_size=8, stride=4)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1)
+        self.l1 = nn.Linear(in_features=64*7*7, out_features=512)
+
+        self.value = NoisyLinear(512, nb_atoms, sigma_init=sigma_init)
+        self.advantage = NoisyLinear(512, num_action * nb_atoms, sigma_init=sigma_init)
+
+    
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.l1(x))
+
+        value = self.value(x).view(-1, self.nb_atoms).unsqueeze(1).expand(-1, self.num_action, self.nb_atoms)
+        advantage = self.advantage(x).view(-1, self.num_action, self.nb_atoms)
+
         phi = value + (advantage - advantage.mean(1, keepdim=True))
         out = F.softmax(phi, dim=-1)
         return out

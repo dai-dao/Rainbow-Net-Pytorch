@@ -36,8 +36,8 @@ class DistDeepQ(object):
         # self.model = DistDuelingMLP(64, self.nb_atoms, self.ob_space, self.ac_space)
         # self.target_model = DistDuelingMLP(64, self.nb_atoms, self.ob_space, self.ac_space)
 
-        self.model = NoisyDistDuelingMLP(64, self.nb_atoms, self.ob_space, self.ac_space)
-        self.target_model = NoisyDistDuelingMLP(64, self.nb_atoms, self.ob_space, self.ac_space)
+        self.model = NoisyDistDuelingMLP(64, self.nb_atoms, self.ob_space, self.ac_space, 0.017)
+        self.target_model = NoisyDistDuelingMLP(64, self.nb_atoms, self.ob_space, self.ac_space, 0.017)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.args.lr)
 
         # Helps in update
@@ -96,7 +96,7 @@ class DistDeepQ(object):
         nb_atoms = self.nb_atoms 
         nstep = self.args.nstep
 
-        obs = Variable(torch.from_numpy(obs).type(self.dtype)).view(nstep, batch_size, self.ob_space)
+        obs = torch.from_numpy(obs).type(self.dtype).view(nstep, batch_size, self.ob_space)
         obs_next = Variable(torch.from_numpy(obs_next).type(self.dtype)).view(nstep, batch_size, self.ob_space)
         weights = Variable(torch.from_numpy(weights).type(self.dtype)).view(batch_size, 1)
         actions = Variable(torch.from_numpy(actions.astype(int)).type(self.atype)).view(nstep, batch_size, 1)
@@ -110,7 +110,7 @@ class DistDeepQ(object):
         next_online_phi = self.model(obs_last)
         next_online_q = self.p_to_q(next_online_phi)
         _, next_online_action = next_online_q.data.max(1)
-        next_target_phi = self.target_model(obs_next).data
+        next_target_phi = self.target_model(obs_last).data
         next_target_best = next_target_phi[batch_dim, next_online_action]
 
         # Compute n-step q loss
@@ -120,10 +120,10 @@ class DistDeepQ(object):
 
         for i in reversed(range(nstep)):
             m = self.m.fill_(0)
-            rewards_i = rewards[i].view(batch_size, 1)
-            dones_i = dones[i].view(batch_size, 1)
-            actions_i = actions[i].view(batch_size, 1)
-            obs_i = obs[i].view(batch_size, self.ob_space)
+            rewards_i = rewards[i].clone().view(batch_size, 1)
+            dones_i = dones[i].clone().view(batch_size, 1)
+            actions_i = actions[i].clone().view(batch_size, 1)
+            obs_i = obs[i].clone().view(batch_size, self.ob_space)
 
             big_r_i = rewards_i.expand(batch_size, nb_atoms)
             big_dones_i = dones_i.expand(batch_size, nb_atoms)
@@ -138,7 +138,7 @@ class DistDeepQ(object):
                                 (next_target_best * (u.float() - b)).view(-1))
             m.view(-1).index_add_(0, (u + self.offset).view(-1),
                                 (next_target_best * (b - l.float())).view(-1))
-            online_phi_i = self.model(obs_i)
+            online_phi_i = self.model(Variable(obs_i))
             q_out_selected_i = online_phi_i[batch_dim, actions_i.squeeze()]
             loss_i = -(Variable(m) * torch.log(q_out_selected_i + 1e-5)).sum(-1)
             kl_losses.add_(loss_i.data)
@@ -148,7 +148,6 @@ class DistDeepQ(object):
             weighted_loss_i.backward()
             nn.utils.clip_grad_norm(self.model.parameters(), self.args.grad_norm_clipping)
             self.optimizer.step() 
-
         return kl_losses.cpu().numpy().flatten()
 
 
