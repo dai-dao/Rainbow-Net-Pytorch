@@ -186,11 +186,13 @@ def learn(env, args):
             # Update target periodically
             agent.update_target()  
 
-        
+        mean_100ep_reward = round(np.mean(episode_rewards[-101:-1]), 1)
+        num_episodes = len(episode_rewards)
         if done and args.print_freq is not None and len(episode_rewards) % args.print_freq == 0:
-            mean_100ep_reward = round(np.mean(episode_rewards[-101:-1]), 1)
-            num_episodes = len(episode_rewards)
+            
+            """
             logger.record_tabular("steps", t)
             logger.record_tabular("episodes", num_episodes)
             logger.record_tabular("mean 100 episode reward", mean_100ep_reward)
             logger.dump_tabular()
+            """

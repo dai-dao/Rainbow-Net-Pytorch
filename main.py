@@ -5,8 +5,9 @@ import torch
 
 import dist_deepq
 from model import DistMLP
-from param import Params, AtariParams
+from param import Params, AtariParams, TestParams, CartPoleParams
 import atari_rainbow
+import test_atari
 
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 
@@ -42,10 +43,11 @@ def run_atari(env_id):
 
 
 def run_cartpole():
-    args = Params("CartPole-v0")
+    args = CartPoleParams("CartPole-v0")
     env = gym.make("CartPole-v0")
     set_global_seeds(10, args)
-    atari_rainbow.learn(env, args)
+    # atari_rainbow.learn(env, args)
+    test_atari.learn(env, args)
 
 
 def main():
@@ -59,7 +61,21 @@ def main():
     # dist_deepq.learn_nstep(env, args, callback=callback)
 
 
+def atari_test(env_id):
+    args = TestParams(env_id)
+    env = make_atari(args.env_id)
+    env = wrap_deepmind(env, clip_rewards=True, frame_stack=True, scale=True)
+    env = wrap_pytorch(env)
+    set_global_seeds(10, args)
+    test_atari.learn(env, args)
+
+
 if __name__ == '__main__':
     # main()
     # run_atari('BreakoutNoFrameskip-v4')
+    # run_cartpole()
+    
+    
     run_cartpole()
+    
+    # atari_test('BreakoutNoFrameskip-v4')

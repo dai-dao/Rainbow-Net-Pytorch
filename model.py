@@ -78,7 +78,32 @@ class NoisyLinear(nn.Linear):
         self.epsilon_bias = torch.zeros(self.out_features).type(self.dtype)
 
 
+class NoisyDuelingMLP(nn.Module):
+    def __init__(self, ob_shape, num_action, dtype, sigma_init=0.017):
+        super(NoisyDuelingMLP, self).__init__()
+        self.num_action = num_action
+        self.l1 = nn.Linear(ob_shape, 64)
+        self.value = NoisyLinear(64, 1, dtype, sigma_init=sigma_init)
+        self.advantage = NoisyLinear(64, num_action, dtype, sigma_init=sigma_init)
+        
+
+    def forward(self, x):
+        x = F.relu(self.l1(x))
+        value = self.value(x).expand(-1, self.num_action)
+        advantage = self.advantage(x)
+        out = value + (advantage - advantage.mean(1, keepdim=True))
+        return out
+
+    def sample_noise(self):
+        self.value.sample_noise()
+        self.advantage.sample_noise()
+
     
+    def reset_noise(self):
+        self.value.reset_noise()
+        self.advantage.reset_noise()
+
+
 class NoisyDistDuelingMLP(nn.Module):
     def __init__(self, nb_atoms, ob_shape, num_action, dtype, sigma_init):
         super(NoisyDistDuelingMLP, self).__init__()
@@ -96,6 +121,44 @@ class NoisyDistDuelingMLP(nn.Module):
         phi = value + (advantage - advantage.mean(1, keepdim=True))
         out = F.softmax(phi, dim=-1)
         return out
+
+
+    def sample_noise(self):
+        self.value.sample_noise()
+        self.advantage.sample_noise()
+
+    
+    def reset_noise(self):
+        self.value.reset_noise()
+        self.advantage.reset_noise()
+
+
+class NoisyDuelingConv(nn.Module):
+    def __init__(self, ob_channels, num_action, dtype, sigma_init):
+        super(NoisyDuelingConv, self).__init__()
+        self.num_action = num_action
+
+        self.conv1 = nn.Conv2d(in_channels=ob_channels, out_channels=32, kernel_size=8, stride=4)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1)
+        self.l1 = nn.Linear(in_features=64*7*7, out_features=512)
+
+        self.value = NoisyLinear(512, 1, dtype, sigma_init=sigma_init)
+        self.advantage = NoisyLinear(512, num_action, dtype, sigma_init=sigma_init)
+
+    
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.l1(x))
+
+        value = self.value(x).expand(-1, self.num_action)
+        advantage = self.advantage(x)
+
+        q_out = value + (advantage - advantage.mean(1, keepdim=True))
+        return q_out
 
 
     def sample_noise(self):

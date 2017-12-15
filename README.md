@@ -35,5 +35,5 @@ Needs more benchmarking against several different environments, the current impl
 1. Flip 'dones' variable before multiplying with state value
 2. Use 'Tensor.index_add_', instead of 'Tensor[i].add_'
 3. For n-step learning, do optimizer update at every step, avoid aggregating losses from each step. Still not sure why that doesn't work.
-
-
+4. Currently NOT learning at all -> Investigating why -> Deliberate testing is key
+5. Hard to test and verify without GPu
