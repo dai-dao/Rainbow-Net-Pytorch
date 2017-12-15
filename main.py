@@ -41,18 +41,25 @@ def run_atari(env_id):
     atari_rainbow.learn(env, args)
 
 
+def run_cartpole():
+    args = Params("CartPole-v0")
+    env = gym.make("CartPole-v0")
+    set_global_seeds(10, args)
+    atari_rainbow.learn(env, args)
+
+
 def main():
-    args = Params()    
     env = gym.make("CartPole-v0")
     # env = gym.make("MountainCar-v0")
     env.seed(1337)
-    np.random.seed(1337)
+    # np.random.seed(1337)
     torch.manual_seed(1337)
 
     # dist_deepq.learn(env, args, callback=callback)
-    dist_deepq.learn_nstep(env, args, callback=callback)
+    # dist_deepq.learn_nstep(env, args, callback=callback)
 
 
 if __name__ == '__main__':
     # main()
-    run_atari('BreakoutNoFrameskip-v4')
+    # run_atari('BreakoutNoFrameskip-v4')
+    run_cartpole()

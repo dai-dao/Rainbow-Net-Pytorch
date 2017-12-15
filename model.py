@@ -80,13 +80,13 @@ class NoisyLinear(nn.Linear):
 
     
 class NoisyDistDuelingMLP(nn.Module):
-    def __init__(self, hidden, nb_atoms, ob_shape, num_action, dtype, sigma_init):
+    def __init__(self, nb_atoms, ob_shape, num_action, dtype, sigma_init):
         super(NoisyDistDuelingMLP, self).__init__()
         self.nb_atoms = nb_atoms
         self.num_action = num_action
-        self.l1 = nn.Linear(ob_shape, hidden)
-        self.value = NoisyLinear(hidden, nb_atoms, dtype, sigma_init=sigma_init)
-        self.advantage = NoisyLinear(hidden, num_action * nb_atoms, dtype, sigma_init=sigma_init)
+        self.l1 = nn.Linear(ob_shape, 64)
+        self.value = NoisyLinear(64, nb_atoms, dtype, sigma_init=sigma_init)
+        self.advantage = NoisyLinear(64, num_action * nb_atoms, dtype, sigma_init=sigma_init)
 
 
     def forward(self, x):

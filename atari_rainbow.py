@@ -7,7 +7,7 @@ import numpy as np
 from baselines.common.schedules import LinearSchedule
 from baselines import logger
 
-from model import NoisyDistDuelingConv
+from model import NoisyDistDuelingConv, NoisyDistDuelingMLP
 from replay_buffer import ReplayBuffer_NStep, PrioritizedReplayBuffer_NStep
 
 
@@ -15,7 +15,7 @@ class RainbowAgent(object):
     def __init__(self, ob_shape, num_action, args):
         self.args = args
         self.num_action = num_action
-        self.ob_chan, self.ob_w, self.ob_h = ob_shape
+        self.ob_shape = ob_shape    
 
         self.dtype = torch.FloatTensor
         self.atype = torch.LongTensor
@@ -30,8 +30,12 @@ class RainbowAgent(object):
         self.z = torch.linspace(self.v_min, self.v_max, self.nb_atoms).type(self.dtype)
         self.m = torch.zeros(args.batch_size, self.nb_atoms).type(self.dtype)
         
-        self.model = NoisyDistDuelingConv(self.nb_atoms, ob_shape[0], num_action, self.dtype, args.sigma_init)
-        self.target_model = NoisyDistDuelingConv(self.nb_atoms, ob_shape[0], num_action, self.dtype, args.sigma_init)
+        # self.model = NoisyDistDuelingConv(self.nb_atoms, ob_shape[0], num_action, self.dtype, args.sigma_init)
+        # self.target_model = NoisyDistDuelingConv(self.nb_atoms, ob_shape[0], num_action, self.dtype, args.sigma_init)
+        self.model = NoisyDistDuelingMLP(self.nb_atoms, ob_shape[0], num_action, self.dtype, args.sigma_init)
+        self.target_model = NoisyDistDuelingMLP(self.nb_atoms, ob_shape[0], num_action, self.dtype, args.sigma_init)
+        
+        
         if self.args.cuda:
             self.model.cuda()
             self.target_model.cuda()
@@ -58,7 +62,7 @@ class RainbowAgent(object):
 
 
     def act(self, ob):
-        ob_var = Variable(torch.from_numpy(ob).contiguous().type(self.dtype)).view(-1, self.ob_chan, self.ob_w, self.ob_h)
+        ob_var = Variable(torch.from_numpy(ob).contiguous().type(self.dtype)).view(-1, *self.ob_shape)
         phi = self.model(ob_var)
         q_out = self.p_to_q(phi)
         _, deterministic_actions = q_out.data.max(1)
@@ -76,15 +80,15 @@ class RainbowAgent(object):
         nb_atoms = self.nb_atoms 
         nstep = self.args.nstep
 
-        obs = Variable(torch.from_numpy(obs).type(self.dtype)).view(nstep, batch_size, self.ob_chan, self.ob_w, self.ob_h)
-        obs_next = Variable(torch.from_numpy(obs_next).type(self.dtype)).view(nstep, batch_size, self.ob_chan, self.ob_w, self.ob_h)
+        obs = Variable(torch.from_numpy(obs).type(self.dtype)).view(nstep, batch_size, *self.ob_shape)
+        obs_next = Variable(torch.from_numpy(obs_next).type(self.dtype)).view(nstep, batch_size, *self.ob_shape)
         weights = Variable(torch.from_numpy(weights).type(self.dtype)).view(batch_size, 1)
         actions = Variable(torch.from_numpy(actions.astype(int)).type(self.atype)).view(nstep, batch_size, 1)
         rewards = torch.from_numpy(rewards).type(self.dtype).view(nstep, batch_size, 1)
         dones = torch.from_numpy(dones.astype(float)).type(self.dtype).view(nstep, batch_size, 1) 
 
         # Last State of the nstep sequence to boostrap off of
-        obs_last = obs_next[-1].view(batch_size, self.ob_chan, self.ob_w, self.ob_h)
+        obs_last = obs_next[-1].view(batch_size, *self.ob_shape)
 
         # DDQN
         next_online_phi = self.model(obs_last)
@@ -103,7 +107,7 @@ class RainbowAgent(object):
             rewards_i = rewards[i].clone().view(batch_size, 1)
             dones_i = dones[i].clone().view(batch_size, 1)
             actions_i = actions[i].clone().view(batch_size, 1)
-            obs_i = obs[i].clone().view(batch_size, self.ob_chan, self.ob_w, self.ob_h)
+            obs_i = obs[i].clone().view(batch_size, *self.ob_shape)
 
             big_r_i = rewards_i.expand(batch_size, nb_atoms)
             big_dones_i = dones_i.expand(batch_size, nb_atoms)
@@ -176,15 +180,16 @@ def learn(env, args):
             kl_errors = agent.update(obs_n, actions_n, rewards_n, obs_next_n, dones_n, weights)
             agent.sample_noise()
             # Update priorities in buffer
-            replay_buffer.update_priorities(batch_idxes, kl_errors)
+            replay_buffer.update_priorities(batch_idxes, np.abs(kl_errors) + 1e-6)
 
         if t > args.learning_starts and t % args.target_network_update_freq == 0:
             # Update target periodically
             agent.update_target()  
 
-        mean_100ep_reward = round(np.mean(episode_rewards[-101:-1]), 1)
-        num_episodes = len(episode_rewards)
+        
         if done and args.print_freq is not None and len(episode_rewards) % args.print_freq == 0:
+            mean_100ep_reward = round(np.mean(episode_rewards[-101:-1]), 1)
+            num_episodes = len(episode_rewards)
             logger.record_tabular("steps", t)
             logger.record_tabular("episodes", num_episodes)
             logger.record_tabular("mean 100 episode reward", mean_100ep_reward)
